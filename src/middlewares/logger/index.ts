@@ -1,3 +1,1 @@
-export { createLogger, resetLogger } from './winston.js';
-export { createHttpLogger, type HttpLoggerOptions } from './morgan.js';
-export type { LoggerConfig, Logger } from './types.js';
+export { default as logger, stream } from "./winston";

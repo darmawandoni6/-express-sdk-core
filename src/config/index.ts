@@ -1,5 +1,6 @@
-import { config } from 'dotenv';
-import { envSchema, type Env } from './env.js';
+import { config } from "dotenv";
+
+import { type Env, envSchema } from "./env";
 
 export interface LoadConfigOptions {
   /** Path ke custom .env file */
@@ -26,9 +27,7 @@ export function loadConfig(options: LoadConfigOptions = {}): Env {
 
   const result = envSchema.safeParse(rawEnv);
   if (!result.success) {
-    const formatted = result.error.issues
-      .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
-      .join('\n');
+    const formatted = result.error.issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`[express-sdk] Konfigurasi environment tidak valid:\n${formatted}`);
   }
 

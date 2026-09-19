@@ -1,11 +1,8 @@
-import type { Request } from 'express';
-import type { FileFilterCallback } from 'multer';
+import type { Request } from "express";
 
-export type CustomFileFilter = (
-  req: Request,
-  file: Express.Multer.File,
-  callback: FileFilterCallback,
-) => void;
+import type { FileFilterCallback } from "multer";
+
+export type CustomFileFilter = (req: Request, file: Express.Multer.File, callback: FileFilterCallback) => void;
 
 export interface BaseUploadConfig {
   /** Ukuran file maksimum dalam bytes. Default: 5MB (5 * 1024 * 1024) */
@@ -27,4 +24,4 @@ export interface DiskUploadConfig extends BaseUploadConfig {
   filenameGenerator?: (req: Request, file: Express.Multer.File) => string;
 }
 
-export interface MemoryUploadConfig extends BaseUploadConfig {}
+export type MemoryUploadConfig = BaseUploadConfig;

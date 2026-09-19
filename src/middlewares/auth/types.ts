@@ -15,7 +15,7 @@ export interface JwtConfig {
   /** Masa berlaku token (e.g. '15m', '1h', '7d'). Default: '7d' */
   expiresIn?: string | number;
   /** Algoritma JWT. Default: 'HS256' */
-  algorithm?: 'HS256' | 'HS384' | 'HS512' | 'RS256';
+  algorithm?: "HS256" | "HS384" | "HS512" | "RS256";
 }
 
 export interface JwtMiddlewareOptions extends JwtConfig {

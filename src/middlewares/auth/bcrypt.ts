@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from "bcrypt";
 
 const DEFAULT_SALT_ROUNDS = 10;
 
@@ -7,10 +7,7 @@ const DEFAULT_SALT_ROUNDS = 10;
  * @param plain - Password plaintext
  * @param saltRounds - Jumlah salt rounds. Default: 10
  */
-export async function hashPassword(
-  plain: string,
-  saltRounds = DEFAULT_SALT_ROUNDS,
-): Promise<string> {
+export async function hashPassword(plain: string, saltRounds = DEFAULT_SALT_ROUNDS): Promise<string> {
   return bcrypt.hash(plain, saltRounds);
 }
 
@@ -20,20 +17,14 @@ export async function hashPassword(
  * @param hash - Hash bcrypt
  * @returns `true` jika cocok, `false` jika tidak cocok
  */
-export async function comparePassword(
-  plain: string,
-  hash: string,
-): Promise<boolean> {
+export async function comparePassword(plain: string, hash: string): Promise<boolean> {
   return bcrypt.compare(plain, hash);
 }
 
 /**
  * Versi synchronous untuk hash password (gunakan async jika memungkinkan).
  */
-export function hashPasswordSync(
-  plain: string,
-  saltRounds = DEFAULT_SALT_ROUNDS,
-): string {
+export function hashPasswordSync(plain: string, saltRounds = DEFAULT_SALT_ROUNDS): string {
   return bcrypt.hashSync(plain, saltRounds);
 }
 

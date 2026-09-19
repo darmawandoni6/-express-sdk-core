@@ -1,20 +1,27 @@
 # @express-sdk/core
 
-A modular, production-ready Express and TypeScript library with batteries included. Designed to eliminate repetitive boilerplate and enforce clean architecture, security, logging, validation, and authentication standards.
+A modular, production-ready Express + TypeScript SDK. Eliminates repetitive boilerplate — security, logging, validation, auth, and file upload all pre-configured and ready to use.
 
 ---
 
 ## Features
 
-- ⚡ **TypeScript & Dual ESM/CJS Output** (built with `tsup` and full type definitions)
-- 🔒 **Security**: Configured `helmet` and `cors` middlewares
-- 🪵 **Logging**: Centralized `winston` logger with `morgan` HTTP request streaming
-- 🛡️ **Validation**: Type-safe validation using `zod` for `body`, `query`, and `params`
-- 🔑 **Auth**: JWT sign, verify, and authentication middleware + `bcrypt` password hashing utilities
-- 📁 **File Upload**: `multer` helpers for disk storage (with UUID naming) and memory buffer storage
-- ⚙️ **Config Loader**: Fast environment variable validation on startup using `dotenv` and `zod`
-- 🚀 **App Factory**: `createApp(options)` ready to use with security and logging out of the box
-- 🛑 **Error Handling**: `AppError`, `notFoundHandler`, and structured `errorHandler`
+- ⚡ **TypeScript & Dual ESM/CJS** — full type definitions, tree-shaking friendly
+- 🔒 **Security** — `helmet` + `cors` pre-configured
+- 🪵 **Logging** — `winston` logger + `morgan` HTTP request streaming
+- 🛡️ **Validation** — type-safe Zod validation for `body`, `params`, and `query`
+- 🔑 **Auth** — JWT middleware, sign/verify helpers, bcrypt password hashing
+- 📁 **File Upload** — multer helpers for disk and memory storage
+- ⚙️ **Config Loader** — env variable validation via dotenv + Zod at startup
+- 🚀 **App Factory** — `createApp()` with one-liner setup
+- 🛑 **Error Handling** — structured `errorHandler` + `notFoundHandler` auto-mounted
+
+---
+
+## Requirements
+
+- Node.js `>= 20`
+- Express `>= 4.18` or `>= 5.0`
 
 ---
 
@@ -24,205 +31,314 @@ A modular, production-ready Express and TypeScript library with batteries includ
 npm install @express-sdk/core express
 ```
 
-> **Note**: `express` is a peer dependency. Ensure you have `express` (v4.18+ or v5+) installed in your project.
+> `express` is a peer dependency. Install it separately.
 
 ---
 
 ## Quick Start
 
-### 1. Basic Setup with `createApp`
+```typescript
+import { Router, asyncHandler, createApp, validate, z } from "@express-sdk/core";
+
+const app = createApp(); // Helmet + CORS + body-parser + /health auto-configured
+
+const userSchema = {
+  body: z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+  }),
+};
+
+const router = Router();
+
+router.post(
+  "/users",
+  validate(userSchema),
+  asyncHandler(async (req, res) => {
+    res.success({ user: req.body }, 201);
+  })
+);
+
+app.register(router, "/api/v1");
+app.run(3000); // auto-mounts 404 & error handlers before listening
+```
+
+---
+
+## App Factory
+
+### `createApp(options?)`
+
+```typescript
+import { createApp } from "@express-sdk/core";
+
+const app = createApp({
+  port: 3000,
+
+  // Custom CORS (pass false to disable)
+  cors: {
+    origin: ["http://localhost:3000", "https://myapp.com"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  },
+
+  // Custom Helmet (pass false to disable)
+  helmet: {
+    contentSecurityPolicy: false,
+  },
+
+  // Body parser limits (pass false to disable)
+  bodyParser: {
+    jsonLimit: "10mb",
+    urlEncodedExtended: true,
+  },
+
+  // Disable Morgan HTTP logger
+  logger: false,
+});
+
+app.register(router, "/api/v1"); // mount routes with optional prefix
+app.run();                        // listens on port from config or process.env.PORT
+```
+
+### Built-in Endpoints
+
+| Route | Description |
+|---|---|
+| `GET /health` | Returns `{ status: 200, data: { message: "OK", time: "..." }, error: null }` |
+
+### Response Helpers
+
+Every handler gets `res.success()` and `res.failure()` — consistent JSON shape:
+
+```typescript
+// { status: 201, data: { user }, error: null }
+res.success({ user }, 201);
+
+// { status: 422, data: null, error: { code, message } }
+res.failure({ code: "INVALID_INPUT", message: "Email is required" }, 422);
+```
+
+---
+
+## Validation
+
+```typescript
+import { validate, z } from "@express-sdk/core";
+
+router.put(
+  "/users/:id",
+  validate({
+    params: z.object({ id: z.string().uuid() }),
+    body: z.object({ name: z.string().min(2) }),
+    query: z.object({ notify: z.coerce.boolean().default(false) }),
+  }),
+  asyncHandler(async (req, res) => {
+    // req.body, req.params, req.query are fully typed & validated
+    res.success({ updated: req.params.id });
+  })
+);
+```
+
+Validation errors automatically return:
+
+```json
+{
+  "status": 422,
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": { "name": ["String must contain at least 2 character(s)"] }
+  }
+}
+```
+
+---
+
+## Authentication
+
+### JWT Middleware
+
+```typescript
+import { createJwtMiddleware } from "@express-sdk/core";
+
+// Zero-config — reads secret from process.env.JWT_SECRET automatically
+router.get("/me", createJwtMiddleware(), (req, res) => {
+  res.success({ user: req.user });
+});
+
+// Custom secret (useful for multiple token types or testing)
+const adminAuth = createJwtMiddleware({ secret: process.env.ADMIN_SECRET! });
+router.get("/admin", adminAuth, handler);
+
+// Custom error messages
+const strictAuth = createJwtMiddleware({
+  missingTokenMessage: "Please log in first",
+  invalidTokenMessage: "Your session has expired",
+});
+```
+
+### JWT Utilities
+
+```typescript
+import { signToken, verifyToken, decodeToken } from "@express-sdk/core";
+
+// Sign a token
+const token = signToken(
+  { sub: "user_123", role: "admin" },
+  { secret: process.env.JWT_SECRET!, expiresIn: "7d" }
+);
+
+// Verify
+const payload = verifyToken(token, process.env.JWT_SECRET!);
+
+// Decode without verification (inspection only)
+const decoded = decodeToken(token);
+```
+
+### Password Hashing (bcrypt)
+
+```typescript
+import { hashPassword, comparePassword } from "@express-sdk/core";
+
+const hash = await hashPassword("my-plain-password");        // default 10 rounds
+const isValid = await comparePassword("my-plain-password", hash); // true / false
+```
+
+---
+
+## File Upload
 
 ```typescript
 import {
-  createApp,
-  loadConfig,
-  validateBody,
-  createJwtMiddleware,
-  notFoundHandler,
-  errorHandler,
-} from '@express-sdk/core';
-import { z } from 'zod';
+  createDiskUpload,
+  createDiskUploadMultiple,
+  createMemoryUpload,
+  createMemoryUploadMultiple,
+} from "@express-sdk/core";
 
-// 1. Load and validate environment variables
-const env = loadConfig();
+// Single file → disk (UUID filename)
+router.post(
+  "/avatar",
+  createDiskUpload({
+    dest: "uploads/avatars",
+    maxFileSize: 2 * 1024 * 1024, // 2 MB
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+  }),
+  asyncHandler(async (req, res) => {
+    res.success({ path: req.file?.path });
+  })
+);
 
-// 2. Initialize pre-configured Express app
-const app = createApp({
-  cors: { allowedOrigins: ['http://localhost:3000'] },
-  logger: { serviceName: 'my-service' },
-});
+// Multiple files → disk
+router.post("/photos", createDiskUploadMultiple({ dest: "uploads/", maxCount: 5 }), handler);
 
-// 3. Define Zod validation schemas
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
+// Single file → memory buffer (for processing without saving to disk)
+router.post("/process", createMemoryUpload(), asyncHandler(async (req, res) => {
+  const buffer = req.file?.buffer;
+  res.success({ size: buffer?.length });
+}));
 
-// 4. Setup routes
-app.post('/api/auth/login', validateBody(loginSchema), (req, res) => {
-  // req.body is fully validated and typed
-  res.json({ success: true, message: 'Logged in' });
-});
-
-// 5. Protected route with JWT
-const auth = createJwtMiddleware({ secret: env.JWT_SECRET });
-app.get('/api/me', auth, (req, res) => {
-  res.json({ user: req.user });
-});
-
-// 6. Global 404 & Error Handlers
-app.use(notFoundHandler);
-app.use(errorHandler);
-
-app.listen(env.PORT, () => {
-  console.log(`Server running at http://localhost:${env.PORT}`);
-});
+// Multiple files → memory
+router.post("/batch", createMemoryUploadMultiple({ maxCount: 10 }), handler);
 ```
+
+---
+
+## Error Handling
+
+Use `createHttpError` to throw structured HTTP errors from any handler wrapped in `asyncHandler`:
+
+```typescript
+import { asyncHandler, createHttpError } from "@express-sdk/core";
+
+router.get(
+  "/orders/:id",
+  asyncHandler(async (req, res) => {
+    const order = await findOrder(req.params.id);
+
+    if (!order) {
+      throw createHttpError.NotFound(`Order ${req.params.id} not found`);
+    }
+
+    res.success(order);
+  })
+);
+```
+
+Error responses follow the same shape:
+
+```json
+{
+  "status": 404,
+  "data": null,
+  "error": { "message": "Order abc-123 not found", "code": "INTERNAL_ERROR" }
+}
+```
+
+> `notFoundHandler` and `errorHandler` are **automatically mounted** when you call `app.run()`. You do not need to add them manually.
+
+---
+
+## Config Loader
+
+Validates environment variables at startup — throws a descriptive error if anything is missing or invalid:
+
+```typescript
+import { loadConfig } from "@express-sdk/core";
+
+const env = loadConfig(); // throws if .env is invalid
+
+// env is fully typed:
+// { NODE_ENV, PORT, JWT_SECRET?, JWT_EXPIRES_IN, LOG_LEVEL, UPLOAD_DEST, UPLOAD_MAX_SIZE_MB }
+```
+
+Default `.env` schema (all optional except what you explicitly require):
+
+| Variable | Type | Default |
+|---|---|---|
+| `NODE_ENV` | `development \| production \| test` | `development` |
+| `PORT` | `number` | `3000` |
+| `JWT_SECRET` | `string (min 32 chars)` | — (optional) |
+| `JWT_EXPIRES_IN` | `string` | `7d` |
+| `LOG_LEVEL` | `error \| warn \| info \| http \| debug` | `info` |
+| `UPLOAD_DEST` | `string` | `uploads/` |
+| `UPLOAD_MAX_SIZE_MB` | `number` | `5` |
+
+---
+
+## Logging
+
+The built-in `logger` is a Winston instance available for use in your code:
+
+```typescript
+import { logger } from "@express-sdk/core";
+
+logger.info("Server started");
+logger.warn("Deprecated usage detected", { route: "/old" });
+logger.error("Database connection failed", { err });
+```
+
+Logs are written to:
+- `logs/error.log` — error-level only
+- `logs/combined.log` — all levels
+- Console (colorized) — when `NODE_ENV !== production`
 
 ---
 
 ## Subpath Imports
 
-This package supports granular subpath imports for cleaner imports and tree-shaking:
+For smaller bundles via tree-shaking:
 
 ```typescript
-import { createJwtMiddleware, signToken, hashPassword } from '@express-sdk/core/middlewares/auth';
-import { validate, validateBody, validateQuery, validateParams } from '@express-sdk/core/middlewares/validate';
-import { createDiskUpload, createMemoryUpload } from '@express-sdk/core/middlewares/upload';
-import { createLogger, createHttpLogger } from '@express-sdk/core/middlewares/logger';
-import { createCorsMiddleware } from '@express-sdk/core/middlewares/cors';
-import { createHelmetMiddleware } from '@express-sdk/core/middlewares/helmet';
-import { AppError, errorHandler, notFoundHandler } from '@express-sdk/core/middlewares/error';
-import { loadConfig } from '@express-sdk/core/config';
-import { createApp } from '@express-sdk/core/app';
-```
-
----
-
-## Detailed Modules Guide
-
-### 1. Validation (`zod`)
-
-Validate incoming requests with automatic type coercion and error reporting:
-
-```typescript
-import { validateBody, validateQuery, validateParams, validateRequest } from '@express-sdk/core';
-import { z } from 'zod';
-
-// Body validation
-const userSchema = z.object({
-  name: z.string().min(2),
-  age: z.coerce.number().min(18),
-});
-app.post('/users', validateBody(userSchema), handler);
-
-// Query validation
-const querySchema = z.object({
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(10),
-});
-app.get('/users', validateQuery(querySchema), handler);
-
-// Combined validation
-app.put(
-  '/users/:id',
-  validateRequest({
-    params: z.object({ id: z.coerce.number() }),
-    body: z.object({ name: z.string() }),
-  }),
-  handler,
-);
-```
-
-### 2. Authentication (`jwt` & `bcrypt`)
-
-```typescript
-import {
-  signToken,
-  verifyToken,
-  hashPassword,
-  comparePassword,
-  createJwtMiddleware,
-} from '@express-sdk/core';
-
-// Password hashing
-const hashedPassword = await hashPassword('my-plain-password');
-const isValid = await comparePassword('my-plain-password', hashedPassword);
-
-// Issue JWT
-const token = signToken({ sub: 'user_123', role: 'admin' }, {
-  secret: process.env.JWT_SECRET!,
-  expiresIn: '7d',
-});
-
-// Protect route
-app.get('/protected', createJwtMiddleware({ secret: process.env.JWT_SECRET! }), (req, res) => {
-  // req.user contains the decoded payload
-  res.json({ userId: req.user?.sub });
-});
-```
-
-### 3. File Upload (`multer`)
-
-```typescript
-import { createDiskUpload, createMemoryUpload } from '@express-sdk/core';
-
-// Disk upload (saves with UUID filename)
-app.post(
-  '/upload/avatar',
-  createDiskUpload({
-    dest: 'uploads/avatars',
-    maxFileSize: 2 * 1024 * 1024, // 2MB
-    allowedMimeTypes: ['image/jpeg', 'image/png'],
-  }),
-  (req, res) => {
-    res.json({ filePath: req.file?.path });
-  },
-);
-
-// Memory upload (stored in req.file.buffer)
-app.post('/upload/process', createMemoryUpload(), (req, res) => {
-  const buffer = req.file?.buffer;
-  res.send('Processed file in memory');
-});
-```
-
-### 4. Logging (`winston` + `morgan`)
-
-```typescript
-import { createLogger, createHttpLogger } from '@express-sdk/core';
-
-const logger = createLogger({
-  serviceName: 'order-service',
-  level: 'info',
-});
-
-logger.info('Order placed', { orderId: 1234 });
-
-// Stream HTTP requests
-app.use(createHttpLogger(logger));
-```
-
-### 5. Error Handling
-
-```typescript
-import { AppError, errorHandler, notFoundHandler } from '@express-sdk/core';
-
-app.get('/order/:id', async (req, res, next) => {
-  const order = await findOrder(req.params.id);
-  if (!order) {
-    throw new AppError('Order not found', {
-      statusCode: 404,
-      code: 'ORDER_NOT_FOUND',
-      details: { id: req.params.id },
-    });
-  }
-  res.json(order);
-});
-
-// Mount at the end
-app.use(notFoundHandler);
-app.use(errorHandler);
+import { createApp, asyncHandler }         from "@express-sdk/core/app";
+import { loadConfig }                       from "@express-sdk/core/config";
+import { createJwtMiddleware, hashPassword } from "@express-sdk/core/middlewares/auth";
+import { errorHandler, notFoundHandler }    from "@express-sdk/core/middlewares/error";
+import { logger }                           from "@express-sdk/core/middlewares/logger";
+import { createDiskUpload }                 from "@express-sdk/core/middlewares/upload";
+import { validate }                         from "@express-sdk/core/middlewares/validate";
 ```
 
 ---
@@ -230,14 +346,10 @@ app.use(errorHandler);
 ## Scripts
 
 ```bash
-# Build both CJS and ESM distributions
-npm run build
-
-# Run TypeScript typecheck
-npm run typecheck
-
-# Run automated tests
-npm test
+npm run build        # Build CJS + ESM distributions
+npm run typecheck    # TypeScript type check
+npm test             # Run tests
+npm run example      # Run the default example (tsx)
 ```
 
 ---

@@ -1,19 +1,5 @@
-export {
-  signToken,
-  verifyToken,
-  decodeToken,
-  createJwtMiddleware,
-} from './jwt.js';
+export { signToken, verifyToken, decodeToken, createJwtMiddleware } from "./jwt";
 
-export {
-  hashPassword,
-  comparePassword,
-  hashPasswordSync,
-  comparePasswordSync,
-} from './bcrypt.js';
+export { hashPassword, comparePassword, hashPasswordSync, comparePasswordSync } from "./bcrypt";
 
-export type {
-  JwtPayload,
-  JwtConfig,
-  JwtMiddlewareOptions,
-} from './types.js';
+export type { JwtPayload, JwtConfig, JwtMiddlewareOptions } from "./types";

@@ -1,43 +1,50 @@
-import winston from 'winston';
-import type { LoggerConfig } from './types.js';
+import winston from "winston";
 
-let _logger: winston.Logger | null = null;
+const { combine, timestamp, printf, colorize, errors, json } = winston.format;
 
-/**
- * Membuat (atau mengembalikan) singleton Winston logger.
- * Panggilan berulang mengembalikan instance yang sama kecuali resetLogger() dipanggil.
- */
-export function createLogger(config: LoggerConfig = {}): winston.Logger {
-  if (_logger) return _logger;
+// Format untuk console (lebih enak dibaca manusia)
+const consoleFormat = printf(({ level, message, timestamp, stack }) => {
+  return `${timestamp} [${level}]: ${stack || message}`;
+});
 
-  const isProd =
-    config.jsonFormat ?? process.env['NODE_ENV'] === 'production';
+const isTest = process.env.NODE_ENV === "test";
+const isProduction = process.env.NODE_ENV === "production";
 
-  _logger = winston.createLogger({
-    level: config.level ?? (isProd ? 'info' : 'debug'),
-    defaultMeta: { service: config.serviceName ?? 'express-sdk' },
-    format: winston.format.combine(
-      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      isProd
-        ? winston.format.json()
-        : winston.format.combine(
-            winston.format.colorize(),
-            winston.format.printf(
-              ({ timestamp, level, message, service, ...meta }) => {
-                const metaString =
-                  Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
-                return `${timestamp} [${service}] ${level}: ${message}${metaString}`;
-              },
-            ),
-          ),
-    ),
-    transports: [new winston.transports.Console()],
-  });
+const transports: winston.transport[] = [];
 
-  return _logger;
+// Jangan tulis ke file saat testing — memperlambat test dan bikin log tidak perlu
+if (!isTest) {
+  transports.push(
+    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
+    new winston.transports.File({ filename: "logs/combined.log" }),
+  );
 }
 
-/** Reset singleton logger (berguna untuk testing) */
-export function resetLogger(): void {
-  _logger = null;
+// Di development & test (jika ada), tambahkan output ke console
+if (!isProduction) {
+  transports.push(
+    new winston.transports.Console({
+      // Saat testing, matikan output console agar tidak berisik
+      silent: isTest,
+      format: combine(colorize(), timestamp({ format: "YYYY-MM-DD HH:mm:ss" }), errors({ stack: true }), consoleFormat),
+    }),
+  );
 }
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || "info",
+  format: combine(
+    timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+    errors({ stack: true }), // supaya error stack ikut tercatat
+    json()
+  ),
+  transports,
+  // Jangan exit saat uncaught exception (opsional)
+  exitOnError: false,
+});
+
+export default logger;
+
+export const stream = {
+  write: (message: string) => logger.http(message.trim()),
+};
