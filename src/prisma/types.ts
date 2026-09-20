@@ -25,10 +25,9 @@ export interface PrismaClientOptions {
 }
 
 export interface PrismaClientLike {
-  $connect(): Promise<void>;
-  $disconnect(): Promise<void>;
-  $on?(event: string, callback: (...args: any[]) => void): void;
-  [key: string]: any;
+  $connect?(): Promise<unknown> | unknown;
+  $disconnect?(): Promise<unknown> | unknown;
+  $on?(event: string, callback: (...args: unknown[]) => void): void;
 }
 
 export interface PrismaErrorResponse {

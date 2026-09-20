@@ -6,3 +6,5 @@ uploads/
 coverage/
 .DS_Store
 *.db
+package-lock.json
+pnpm-lock.yaml

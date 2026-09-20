@@ -1,4 +1,4 @@
-import { RequestHandler } from "express";
+import type { RequestHandler } from "express";
 
 import { ZodError, type ZodSchema, z } from "zod";
 

@@ -9,7 +9,7 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
   next(createHttpError.NotFound(`Route ${req.method} ${req.originalUrl} not found`));
 };
 
-export const errorHandler: ErrorRequestHandler = (err: any, req, res, next) => {
+export const errorHandler: ErrorRequestHandler = (err: unknown, req, res, next) => {
   if (res.headersSent) return next(err);
 
   // 1. Prisma ORM errors auto-mapping
@@ -28,9 +28,15 @@ export const errorHandler: ErrorRequestHandler = (err: any, req, res, next) => {
   }
 
   // 2. Standard HTTP / Generic errors
-  const status = err.status ?? (typeof err.statusCode === "number" ? err.statusCode : 500);
-  const code = err.code ?? "INTERNAL_ERROR";
-  const message = err.message ?? "Internal server error";
+  const errorObj = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : {};
+  const status =
+    typeof errorObj.status === "number"
+      ? errorObj.status
+      : typeof errorObj.statusCode === "number"
+        ? (errorObj.statusCode as number)
+        : 500;
+  const code = typeof errorObj.code === "string" ? errorObj.code : "INTERNAL_ERROR";
+  const message = typeof errorObj.message === "string" ? errorObj.message : "Internal server error";
 
   res.status(status);
 

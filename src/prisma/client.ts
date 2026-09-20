@@ -2,7 +2,6 @@ import { logger } from "../middlewares/logger";
 import type { PrismaClientLike, PrismaClientOptions } from "./types";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __expressSdkPrismaInstance: PrismaClientLike | undefined;
 }
 
@@ -41,7 +40,12 @@ export function createPrismaClient<T extends PrismaClientLike = PrismaClientLike
   // Hook query logging if requested and $on method is available
   if (logQueries && typeof client.$on === "function") {
     try {
-      client.$on("query", (event: { query?: string; params?: string; duration?: number }) => {
+      client.$on("query", (e: unknown) => {
+        const event = (typeof e === "object" && e !== null ? e : {}) as {
+          query?: string;
+          params?: string;
+          duration?: number;
+        };
         const duration = event.duration !== undefined ? ` [${event.duration}ms]` : "";
         logger.debug(`[Prisma Query]${duration} ${event.query || ""} ${event.params || ""}`.trim());
       });
@@ -51,9 +55,8 @@ export function createPrismaClient<T extends PrismaClientLike = PrismaClientLike
   }
 
   // Eager connection check
-  if (eagerConnect) {
-    client
-      .$connect()
+  if (eagerConnect && typeof client.$connect === "function") {
+    Promise.resolve(client.$connect())
       .then(() => {
         if (logConnection) {
           logger.info("[Prisma] Database connected successfully");
@@ -68,10 +71,12 @@ export function createPrismaClient<T extends PrismaClientLike = PrismaClientLike
   }
 
   // Graceful shutdown listener
-  if (enableShutdownHook) {
+  if (enableShutdownHook && typeof client.$disconnect === "function") {
     const handleShutdown = async () => {
       try {
-        await client.$disconnect();
+        if (typeof client.$disconnect === "function") {
+          await client.$disconnect();
+        }
         if (logConnection) {
           logger.info("[Prisma] Database connection closed cleanly");
         }

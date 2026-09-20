@@ -1,7 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
-import { ExpressApp, Router, createApp } from "./index";
+import { Router, createApp } from "./index";
 
 describe("createApp & ExpressApp", () => {
   it("should create independent application instances", () => {

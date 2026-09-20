@@ -7,9 +7,10 @@ Mandatory guidelines for AI coding agents working on the development of `@expres
 ## Core Principles
 
 1. **Do not break public APIs** — any changes modifying exported function signatures must be explicitly discussed first.
-2. **Typecheck & tests must pass** before considering any task complete — run `yarn typecheck && yarn test`.
+2. **Typecheck & tests must pass** before considering any task complete — run `yarn lint && yarn typecheck && yarn test`.
 3. **Single import, single source** — users should import directly from `@express-sdk/core`, not from underlying third-party dependencies.
 4. **Explicit is better than magic** — avoid unexpected or hidden behaviors.
+5. **Never commit without permission** — always ask and wait for explicit permission from the user before executing `git commit`.
 
 ---
 
@@ -99,6 +100,7 @@ Checklist to complete:
 After every change, execute the following commands in sequence:
 
 ```bash
+yarn lint         # Must have 0 errors and 0 warnings
 yarn typecheck    # Must have 0 errors
 yarn test         # Must all pass
 yarn build        # Must succeed without critical errors
@@ -118,6 +120,7 @@ Expected build output:
 
 | Action                                                            | Reason                                               |
 | ----------------------------------------------------------------- | ---------------------------------------------------- |
+| Committing to git without explicit user permission                | Violates user control over repository history        |
 | Modifying the `{ status, data, error }` format                    | Breaking change for all consumers                    |
 | Importing from `express`, `zod`, etc. in public API docs/examples | Users should import everything directly from the SDK |
 | Using `export default` alongside named exports                    | CJS warnings, forces consumers to use `.default`     |
@@ -148,7 +151,13 @@ src/
 │   ├── logger/                  # Winston logger instance
 │   ├── upload/                  # Multer upload helpers
 │   └── validate/                # validate() + ValidationSchemas
+├── prisma/
+│   ├── index.ts                 # Subpath export: @express-sdk/core/prisma
+│   ├── client.ts                # createPrismaClient() (singleton, logger, shutdown)
+│   ├── errors.ts                # isPrismaError(), mapPrismaError()
+│   ├── middleware.ts            # prismaMiddleware()
+│   └── types.ts                 # PrismaClientOptions, PrismaClientLike, PrismaErrorResponse
 └── types/
     ├── index.ts                 # Re-exports all global types
-    └── express.d.ts             # Augmentations: req.user, res.success/failure, app.register/run
+    └── express.d.ts             # Augmentations: req.user, req.prisma, res.success/failure, app.register/run
 ```

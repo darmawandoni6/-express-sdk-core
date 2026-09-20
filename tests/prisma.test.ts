@@ -85,17 +85,27 @@ describe("Prisma Error Handling & Duck-Typing", () => {
   });
 });
 
+interface MockPrismaError extends Error {
+  code?: string;
+  meta?: Record<string, unknown>;
+}
+
 describe("Prisma Middleware & Request Context", () => {
   it("should attach prisma instance to req.prisma", async () => {
-    const mockPrisma = { mock: true, $connect: vi.fn(), $disconnect: vi.fn() };
+    const mockPrisma = {
+      mock: true,
+      $connect: vi.fn().mockResolvedValue(undefined),
+      $disconnect: vi.fn().mockResolvedValue(undefined),
+    };
     const app = createApp({ logger: false });
-    app.use(prismaMiddleware(mockPrisma as any));
+    app.use(prismaMiddleware(mockPrisma));
 
     const router = Router();
     router.get(
       "/test-prisma-req",
       asyncHandler(async (req, res) => {
-        return res.success({ hasPrisma: Boolean(req.prisma), mock: req.prisma.mock });
+        const reqWithPrisma = req as { prisma?: { mock: boolean } };
+        return res.success({ hasPrisma: Boolean(reqWithPrisma.prisma), mock: reqWithPrisma.prisma?.mock });
       })
     );
     app.register(router);
@@ -139,10 +149,10 @@ describe("Global Error Handler Integration with Prisma Errors", () => {
     router.post(
       "/trigger-p2002",
       asyncHandler(async () => {
-        const error = new Error("Unique constraint failed");
-        (error as any).name = "PrismaClientKnownRequestError";
-        (error as any).code = "P2002";
-        (error as any).meta = { target: ["email"] };
+        const error = new Error("Unique constraint failed") as MockPrismaError;
+        error.name = "PrismaClientKnownRequestError";
+        error.code = "P2002";
+        error.meta = { target: ["email"] };
         throw error;
       })
     );
@@ -172,10 +182,10 @@ describe("Global Error Handler Integration with Prisma Errors", () => {
     router.get(
       "/trigger-p2025",
       asyncHandler(async () => {
-        const error = new Error("Record not found");
-        (error as any).name = "PrismaClientKnownRequestError";
-        (error as any).code = "P2025";
-        (error as any).meta = { cause: "No user found with ID" };
+        const error = new Error("Record not found") as MockPrismaError;
+        error.name = "PrismaClientKnownRequestError";
+        error.code = "P2025";
+        error.meta = { cause: "No user found with ID" };
         throw error;
       })
     );
