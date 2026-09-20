@@ -5,3 +5,4 @@ uploads/
 *.log
 coverage/
 .DS_Store
+*.db

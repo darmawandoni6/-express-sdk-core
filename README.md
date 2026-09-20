@@ -98,13 +98,13 @@ const app = createApp({
 });
 
 app.register(router, "/api/v1"); // mount routes with optional prefix
-app.run();                        // listens on port from config or process.env.PORT
+app.run(); // listens on port from config or process.env.PORT
 ```
 
 ### Built-in Endpoints
 
-| Route | Description |
-|---|---|
+| Route         | Description                                                                  |
+| ------------- | ---------------------------------------------------------------------------- |
 | `GET /health` | Returns `{ status: 200, data: { message: "OK", time: "..." }, error: null }` |
 
 ### Response Helpers
@@ -182,13 +182,10 @@ const strictAuth = createJwtMiddleware({
 ### JWT Utilities
 
 ```typescript
-import { signToken, verifyToken, decodeToken } from "@express-sdk/core";
+import { decodeToken, signToken, verifyToken } from "@express-sdk/core";
 
 // Sign a token
-const token = signToken(
-  { sub: "user_123", role: "admin" },
-  { secret: process.env.JWT_SECRET!, expiresIn: "7d" }
-);
+const token = signToken({ sub: "user_123", role: "admin" }, { secret: process.env.JWT_SECRET!, expiresIn: "7d" });
 
 // Verify
 const payload = verifyToken(token, process.env.JWT_SECRET!);
@@ -200,9 +197,9 @@ const decoded = decodeToken(token);
 ### Password Hashing (bcrypt)
 
 ```typescript
-import { hashPassword, comparePassword } from "@express-sdk/core";
+import { comparePassword, hashPassword } from "@express-sdk/core";
 
-const hash = await hashPassword("my-plain-password");        // default 10 rounds
+const hash = await hashPassword("my-plain-password"); // default 10 rounds
 const isValid = await comparePassword("my-plain-password", hash); // true / false
 ```
 
@@ -235,10 +232,14 @@ router.post(
 router.post("/photos", createDiskUploadMultiple({ dest: "uploads/", maxCount: 5 }), handler);
 
 // Single file → memory buffer (for processing without saving to disk)
-router.post("/process", createMemoryUpload(), asyncHandler(async (req, res) => {
-  const buffer = req.file?.buffer;
-  res.success({ size: buffer?.length });
-}));
+router.post(
+  "/process",
+  createMemoryUpload(),
+  asyncHandler(async (req, res) => {
+    const buffer = req.file?.buffer;
+    res.success({ size: buffer?.length });
+  })
+);
 
 // Multiple files → memory
 router.post("/batch", createMemoryUploadMultiple({ maxCount: 10 }), handler);
@@ -296,15 +297,15 @@ const env = loadConfig(); // throws if .env is invalid
 
 Default `.env` schema (all optional except what you explicitly require):
 
-| Variable | Type | Default |
-|---|---|---|
-| `NODE_ENV` | `development \| production \| test` | `development` |
-| `PORT` | `number` | `3000` |
-| `JWT_SECRET` | `string (min 32 chars)` | — (optional) |
-| `JWT_EXPIRES_IN` | `string` | `7d` |
-| `LOG_LEVEL` | `error \| warn \| info \| http \| debug` | `info` |
-| `UPLOAD_DEST` | `string` | `uploads/` |
-| `UPLOAD_MAX_SIZE_MB` | `number` | `5` |
+| Variable             | Type                                     | Default       |
+| -------------------- | ---------------------------------------- | ------------- |
+| `NODE_ENV`           | `development \| production \| test`      | `development` |
+| `PORT`               | `number`                                 | `3000`        |
+| `JWT_SECRET`         | `string (min 32 chars)`                  | — (optional)  |
+| `JWT_EXPIRES_IN`     | `string`                                 | `7d`          |
+| `LOG_LEVEL`          | `error \| warn \| info \| http \| debug` | `info`        |
+| `UPLOAD_DEST`        | `string`                                 | `uploads/`    |
+| `UPLOAD_MAX_SIZE_MB` | `number`                                 | `5`           |
 
 ---
 
@@ -321,9 +322,49 @@ logger.error("Database connection failed", { err });
 ```
 
 Logs are written to:
+
 - `logs/error.log` — error-level only
 - `logs/combined.log` — all levels
 - Console (colorized) — when `NODE_ENV !== production`
+
+---
+
+## Prisma ORM Integration (Optional)
+
+`@express-sdk/core` includes first-class optional support for Prisma ORM with automated singleton connection pooling, Winston query & connection logging, and automatic error mapping.
+
+### Setup
+
+```bash
+npm install @express-sdk/core @prisma/client
+npm install -D prisma
+```
+
+### Usage
+
+```typescript
+import { Router, asyncHandler, createApp } from "@express-sdk/core";
+import { createPrismaClient } from "@express-sdk/core/prisma";
+import { PrismaClient } from "@prisma/client";
+
+// 1. Create client with singleton & logging
+export const prisma = createPrismaClient(new PrismaClient(), {
+  logConnection: true,
+  logQueries: process.env.NODE_ENV === "development",
+  enableShutdownHook: true,
+});
+
+// 2. Use in routes (Prisma errors like P2002 duplicate or P2025 not found are auto-mapped to 409 & 404!)
+const router = Router();
+
+router.get(
+  "/users/:id",
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.params.id } });
+    return res.success(user);
+  })
+);
+```
 
 ---
 
@@ -332,13 +373,14 @@ Logs are written to:
 For smaller bundles via tree-shaking:
 
 ```typescript
-import { createApp, asyncHandler }         from "@express-sdk/core/app";
-import { loadConfig }                       from "@express-sdk/core/config";
+import { asyncHandler, createApp } from "@express-sdk/core/app";
+import { loadConfig } from "@express-sdk/core/config";
 import { createJwtMiddleware, hashPassword } from "@express-sdk/core/middlewares/auth";
-import { errorHandler, notFoundHandler }    from "@express-sdk/core/middlewares/error";
-import { logger }                           from "@express-sdk/core/middlewares/logger";
-import { createDiskUpload }                 from "@express-sdk/core/middlewares/upload";
-import { validate }                         from "@express-sdk/core/middlewares/validate";
+import { errorHandler, notFoundHandler } from "@express-sdk/core/middlewares/error";
+import { logger } from "@express-sdk/core/middlewares/logger";
+import { createDiskUpload } from "@express-sdk/core/middlewares/upload";
+import { validate } from "@express-sdk/core/middlewares/validate";
+import { createPrismaClient, prismaMiddleware } from "@express-sdk/core/prisma";
 ```
 
 ---
@@ -346,10 +388,11 @@ import { validate }                         from "@express-sdk/core/middlewares/
 ## Scripts
 
 ```bash
-npm run build        # Build CJS + ESM distributions
-npm run typecheck    # TypeScript type check
-npm test             # Run tests
-npm run example      # Run the default example (tsx)
+npm run build           # Build CJS + ESM distributions
+npm run typecheck       # TypeScript type check
+npm test                # Run tests
+npm run example         # Run the default example
+npm run example:prisma  # Run the Prisma SQLite example
 ```
 
 ---

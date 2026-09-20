@@ -59,7 +59,7 @@ export const createJwtMiddleware = (options?: Partial<JwtMiddlewareOptions>) =>
     const secret = options?.secret ?? process.env.JWT_SECRET;
     if (!secret) {
       throw new Error(
-        "JWT secret is not configured. Pass `secret` via options or set the JWT_SECRET environment variable.",
+        "JWT secret is not configured. Pass `secret` via options or set the JWT_SECRET environment variable."
       );
     }
 
@@ -69,9 +69,7 @@ export const createJwtMiddleware = (options?: Partial<JwtMiddlewareOptions>) =>
     if (cookieAuth) authHeader = cookieAuth;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw createHttpError.Unauthorized(
-        options?.missingTokenMessage ?? "Missing or invalid authorization token",
-      );
+      throw createHttpError.Unauthorized(options?.missingTokenMessage ?? "Missing or invalid authorization token");
     }
 
     const token = authHeader.split(" ")[1]!;

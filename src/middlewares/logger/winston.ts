@@ -16,7 +16,7 @@ const transports: winston.transport[] = [];
 if (!isTest) {
   transports.push(
     new winston.transports.File({ filename: "logs/error.log", level: "error" }),
-    new winston.transports.File({ filename: "logs/combined.log" }),
+    new winston.transports.File({ filename: "logs/combined.log" })
   );
 }
 
@@ -27,7 +27,7 @@ if (!isProduction) {
       // Saat testing, matikan output console agar tidak berisik
       silent: isTest,
       format: combine(colorize(), timestamp({ format: "YYYY-MM-DD HH:mm:ss" }), errors({ stack: true }), consoleFormat),
-    }),
+    })
   );
 }
 

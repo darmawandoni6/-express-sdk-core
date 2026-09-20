@@ -19,6 +19,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: JwtPayload; // dipersempit dari union type yang terlalu lebar
+      prisma?: any; // Diisi jika prismaMiddleware() digunakan
     }
     interface Application {
       register: (routes: express.Router | express.Router[], prefix?: string) => void;

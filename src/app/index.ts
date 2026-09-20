@@ -67,8 +67,7 @@ export class ExpressApp {
       // Note: credentials: true is intentionally omitted for wildcard origin
       // because browsers reject credentialed requests to wildcard origins (CORS spec).
       // Users who need credentials must pass an explicit origin via config.cors.
-      const corsOpts: cors.CorsOptions =
-        typeof config.cors === "object" ? config.cors : { origin: "*" };
+      const corsOpts: cors.CorsOptions = typeof config.cors === "object" ? config.cors : { origin: "*" };
       this.app.use(cors(corsOpts));
     }
 

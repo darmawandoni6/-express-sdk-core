@@ -11,6 +11,7 @@ export default defineConfig({
     "middlewares/logger/index": "src/middlewares/logger/index.ts",
     "middlewares/error/index": "src/middlewares/error/index.ts",
     "config/index": "src/config/index.ts",
+    "prisma/index": "src/prisma/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,
@@ -24,6 +25,7 @@ export default defineConfig({
   // npm installs them automatically since they're listed in `dependencies`.
   external: [
     "express",
+    "@prisma/client",
     "bcrypt",
     "cors",
     "dotenv",

@@ -106,6 +106,7 @@ npm pack --dry-run # Verify files included in the package
 ```
 
 Expected build output:
+
 - `dist/*.js` — ESM
 - `dist/*.cjs` — CommonJS
 - `dist/*.d.ts` + `dist/*.d.cts` — Type declarations
@@ -115,16 +116,16 @@ Expected build output:
 
 ## Prohibited Actions
 
-| Action | Reason |
-|---|---|
-| Modifying the `{ status, data, error }` format | Breaking change for all consumers |
+| Action                                                            | Reason                                               |
+| ----------------------------------------------------------------- | ---------------------------------------------------- |
+| Modifying the `{ status, data, error }` format                    | Breaking change for all consumers                    |
 | Importing from `express`, `zod`, etc. in public API docs/examples | Users should import everything directly from the SDK |
-| Using `export default` alongside named exports | CJS warnings, forces consumers to use `.default` |
-| Hardcoding `process.env.*` inside middlewares | Untestable, inflexible |
-| Bundling dependencies into `dist/` | Code duplication, version conflicts |
-| Committing `.DS_Store` or OS-specific files | Repository noise |
-| Using `throw` inside sync callbacks of async functions | Errors bypass the Promise rejection chain |
-| Using raw `res.json()` / `res.send()` in route handlers | Bypasses consistent response formatting |
+| Using `export default` alongside named exports                    | CJS warnings, forces consumers to use `.default`     |
+| Hardcoding `process.env.*` inside middlewares                     | Untestable, inflexible                               |
+| Bundling dependencies into `dist/`                                | Code duplication, version conflicts                  |
+| Committing `.DS_Store` or OS-specific files                       | Repository noise                                     |
+| Using `throw` inside sync callbacks of async functions            | Errors bypass the Promise rejection chain            |
+| Using raw `res.json()` / `res.send()` in route handlers           | Bypasses consistent response formatting              |
 
 ---
 
