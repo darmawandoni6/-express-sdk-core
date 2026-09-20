@@ -27,6 +27,7 @@ export default defineConfig({
     "express",
     "@prisma/client",
     "bcrypt",
+    "cookie-parser",
     "cors",
     "dotenv",
     "helmet",

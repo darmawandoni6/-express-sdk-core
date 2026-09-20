@@ -102,4 +102,63 @@ describe("createApp & ExpressApp", () => {
     expect(formRes.status).toBe(200);
     expect(formRes.body.data).toEqual({ role: "admin" });
   });
+
+  it("should parse cookies by default via cookie-parser", async () => {
+    const app = createApp({ logger: false });
+    const router = Router();
+
+    router.get("/cookie-test", (req, res) => {
+      res.success({ cookies: req.cookies });
+    });
+
+    app.register(router);
+
+    const res = await request(app).get("/cookie-test").set("Cookie", ["sessionId=123456", "theme=dark"]);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({
+      cookies: {
+        sessionId: "123456",
+        theme: "dark",
+      },
+    });
+  });
+
+  it("should support signed cookies when secret is provided in config", async () => {
+    const secret = "my-secret-key";
+    const app = createApp({ logger: false, cookieParser: secret });
+    const router = Router();
+
+    router.get("/signed-cookie-test", (req, res) => {
+      res.success({
+        cookies: req.cookies,
+        signedCookies: req.signedCookies,
+      });
+    });
+
+    app.register(router);
+
+    // Unsigned cookie
+    const res = await request(app).get("/signed-cookie-test").set("Cookie", ["normal=abc"]);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.cookies).toEqual({ normal: "abc" });
+    expect(res.body.data.signedCookies).toEqual({});
+  });
+
+  it("should allow disabling cookie-parser via cookieParser: false", async () => {
+    const app = createApp({ logger: false, cookieParser: false });
+    const router = Router();
+
+    router.get("/no-cookie", (req, res) => {
+      res.success({ cookies: req.cookies });
+    });
+
+    app.register(router);
+
+    const res = await request(app).get("/no-cookie").set("Cookie", ["sessionId=123456"]);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.cookies).toBeUndefined();
+  });
 });

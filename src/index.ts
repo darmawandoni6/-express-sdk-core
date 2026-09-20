@@ -1,6 +1,6 @@
 // App Factory & Core
-export { asyncHandler, createApp, CreateApp, ExpressApp } from "./app";
-export type { AppOptions, BodyParserOptions, CorsConfig } from "./app";
+export { asyncHandler, cookieParser, createApp, CreateApp, ExpressApp } from "./app";
+export type { AppOptions, BodyParserOptions, CookieParserConfig, CookieParseOptions, CorsConfig } from "./app";
 
 // Express & Router
 export { default as express, Router } from "express";

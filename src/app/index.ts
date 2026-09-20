@@ -1,5 +1,6 @@
 import express, { type Application, type Request, type Router } from "express";
 
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import http from "http";
@@ -11,6 +12,9 @@ import type { AppOptions, BodyParserOptions } from "./types";
 
 export * from "./async-handler";
 export * from "./types";
+
+export { default as cookieParser } from "cookie-parser";
+export type { CookieParseOptions } from "cookie-parser";
 
 export { default as express, Router } from "express";
 export type {
@@ -82,13 +86,24 @@ export class ExpressApp {
       }
     }
 
-    // 4. HTTP Request Logger (Enabled by default unless explicitly disabled or in test mode)
+    // 4. Cookie Parser (Enabled by default unless explicitly set to false)
+    if (config.cookieParser !== false) {
+      if (typeof config.cookieParser === "string" || Array.isArray(config.cookieParser)) {
+        this.app.use(cookieParser(config.cookieParser));
+      } else if (typeof config.cookieParser === "object" && config.cookieParser !== null) {
+        this.app.use(cookieParser(config.cookieParser.secret, config.cookieParser.options));
+      } else {
+        this.app.use(cookieParser());
+      }
+    }
+
+    // 5. HTTP Request Logger (Enabled by default unless explicitly disabled or in test mode)
     if (config.logger !== false && process.env.NODE_ENV !== "test") {
       const skip = (req: Request) => req.path === "/health" || req.originalUrl === "/health";
       this.app.use(morgan("combined", { stream, skip }));
     }
 
-    // 5. Default Health Check Endpoint
+    // 6. Default Health Check Endpoint
     this.app.get("/health", (_req, res) => {
       res.success({ message: "OK", time: new Date().toISOString() });
     });

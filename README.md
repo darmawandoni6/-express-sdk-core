@@ -8,6 +8,7 @@ A modular, production-ready Express + TypeScript SDK. Eliminates repetitive boil
 
 - ⚡ **TypeScript & Dual ESM/CJS** — full type definitions, tree-shaking friendly
 - 🔒 **Security** — `helmet` + `cors` pre-configured
+- 🍪 **Cookie Parser** — `cookie-parser` pre-configured with signed cookie support
 - 🪵 **Logging** — `winston` logger + `morgan` HTTP request streaming
 - 🛡️ **Validation** — type-safe Zod validation for `body`, `params`, and `query`
 - 🔑 **Auth** — JWT middleware, sign/verify helpers, bcrypt password hashing
@@ -40,7 +41,7 @@ npm install @express-sdk/core express
 ```typescript
 import { Router, asyncHandler, createApp, validate, z } from "@express-sdk/core";
 
-const app = createApp(); // Helmet + CORS + body-parser + /health auto-configured
+const app = createApp(); // Helmet + CORS + body-parser + cookie-parser + /health auto-configured
 
 const userSchema = {
   body: z.object({
@@ -92,6 +93,9 @@ const app = createApp({
     jsonLimit: "10mb",
     urlEncodedExtended: true,
   },
+
+  // Cookie parser (pass secret string/array or false to disable)
+  cookieParser: "optional-signing-secret",
 
   // Disable Morgan HTTP logger
   logger: false,
